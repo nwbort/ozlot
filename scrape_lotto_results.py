@@ -79,7 +79,7 @@ def month_chunks(start: date, end: date):
 
         date_start = local_start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         date_end = end_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-        yield f"{year:04d}-{month:02d}", date_start, date_end
+        yield f"{year:04d}-{month:02d}", date_start, date_end, end_utc
 
         year, month = next_year, next_month
 
@@ -213,14 +213,18 @@ def scrape_product(
 ) -> None:
     state = ProductState.load(product, output_dir)
     print(f"== {product} == ({len(state.seen_draw_numbers)} draws already saved)")
+    now = datetime.now(timezone.utc)
 
-    for chunk_key, date_start, date_end in month_chunks(start, end):
+    for chunk_key, date_start, date_end, chunk_end_utc in month_chunks(start, end):
         if chunk_key in state.completed_chunks:
             continue
 
         draws = fetch_chunk(session, product, company, date_start, date_end, max_retries, timeout)
         added = state.append_draws(draws)
-        state.mark_chunk_done(chunk_key)
+        # Only mark a month "done" once it's fully in the past - otherwise a
+        # re-run within the current month would skip draws still to come.
+        if chunk_end_utc < now:
+            state.mark_chunk_done(chunk_key)
 
         if draws:
             print(f"  {chunk_key}: {len(draws)} draw(s), {added} new")

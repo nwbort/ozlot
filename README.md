@@ -16,8 +16,18 @@ and writes each product's draws to `lotto_results/<Product>.jsonl` (one JSON
 draw object per line, matching the API's own draw schema).
 
 The script is safe to re-run: a manifest under `lotto_results/.manifest/`
-records which months have already been fetched, and draws already on disk
-are never duplicated, so an interrupted run can just be started again.
+records which months have already been fully fetched, and draws already on
+disk are never duplicated, so an interrupted run can just be started again.
+The current (still in-progress) month is deliberately never marked complete,
+so re-running keeps picking up new draws as they're published.
+
+## Keeping results up to date
+
+`.github/workflows/update-lotto-results.yml` runs the scraper daily
+(`workflow_dispatch` also works for a manual run), commits any new draws to
+`lotto_results/`, and pushes. Because the manifest is committed too, each
+run only re-fetches the current month per product rather than the whole
+history.
 
 ### Options
 
